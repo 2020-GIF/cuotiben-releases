@@ -1,6 +1,6 @@
 {
-  "versionCode": 15,
-  "versionName": "1.7",
-  "apkUrl": "https://github.com/2020-GIF/cuotiben-releases/releases/download/v1.7/cuotiben-v17.apk",
-  "note": "新增图形题图片裁剪、深色模式、字号调节；更新源已内置"
+  "versionCode": 16,
+  "versionName": "1.8",
+  "apkUrl": "https://github.com/2020-GIF/cuotiben-releases/releases/download/v1.8/cuotiben-v18.apk",
+  "note": "移除内置 API Key（需在设置中填写）；复习中可直接改答案并标记已核对；新增题型×错因统计"
 }
