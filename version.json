@@ -1,6 +1,6 @@
 {
-  "versionCode": 23,
-  "versionName": "1.10.2",
-  "apkUrl": "https://raw.githubusercontent.com/2020-GIF/cuotiben-releases/main/cuotiben-v25.apk",
-  "note": "组卷可去除原图手写痕迹（红笔/蓝笔/浅色铅笔，可自选）；拍照先裁剪再识别；Supabase 云同步"
+  "versionCode": 24,
+  "versionName": "1.10.3",
+  "apkUrl": "https://raw.githubusercontent.com/2020-GIF/cuotiben-releases/main/cuotiben-v26.apk",
+  "note": "修复题库筛选缺少模块/题型/等级分类；去手写算法升级（更准、保护图表色块）"
 }

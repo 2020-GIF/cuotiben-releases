@@ -342,7 +342,7 @@ var QTYPES={
 };
 var examQs=[], examAns={}, examTimer=null, examSec=0;
 var kwFilter="";
-var APP_VERSION_CODE=23; var APP_VERSION_NAME="1.10.2";
+var APP_VERSION_CODE=24; var APP_VERSION_NAME="1.10.3";
 
 // ===== VIEW SWITCH =====
 function sv(v){
@@ -535,9 +535,13 @@ function saveQ(e){
 
 // ===== MANAGE =====
 function rm(){
-  var msel=document.getElementById("cb-filter-mod"); if(msel.options.length===0){msel.innerHTML='<option value="">全部模块</option>';for(var i=0;i<MODS.length;i++) msel.innerHTML+='<option value="'+MODS[i]+'">'+MODS[i]+'</option>'}
-  var tsel=document.getElementById("cb-filter-qtype"); if(tsel.options.length<=1){var seen={},allT=[];for(var m in QTYPES){for(var j=0;j<QTYPES[m].length;j++){if(!seen[QTYPES[m][j]]){seen[QTYPES[m][j]]=1;allT.push(QTYPES[m][j])}}}for(var j=0;j<allT.length;j++) tsel.innerHTML+='<option value="'+allT[j]+'">'+allT[j]+'</option>'}
-  var lsel=document.getElementById("cb-filter-level"); if(lsel.options.length===0){lsel.innerHTML='<option value="">全部等级</option>';for(var i=0;i<8;i++) lsel.innerHTML+='<option value="'+i+'">'+SRS_LBL[i]+'</option>'}
+  var msel=document.getElementById("cb-filter-mod"); var curM=msel.value;
+  msel.innerHTML='<option value="">全部模块</option>';for(var i=0;i<MODS.length;i++) msel.innerHTML+='<option value="'+MODS[i]+'">'+MODS[i]+'</option>';msel.value=curM;
+  var tsel=document.getElementById("cb-filter-qtype"); var curT=tsel.value;var seen={},allT=[];
+  for(var m in QTYPES){for(var j=0;j<QTYPES[m].length;j++){if(!seen[QTYPES[m][j]]){seen[QTYPES[m][j]]=1;allT.push(QTYPES[m][j])}}}
+  tsel.innerHTML='<option value="">全部题型</option>';for(var j=0;j<allT.length;j++) tsel.innerHTML+='<option value="'+allT[j]+'">'+allT[j]+'</option>';tsel.value=curT;
+  var lsel=document.getElementById("cb-filter-level"); var curL=lsel.value;
+  lsel.innerHTML='<option value="">全部等级</option>';for(var i=0;i<8;i++) lsel.innerHTML+='<option value="'+i+'">'+SRS_LBL[i]+'</option>';lsel.value=curL;
   doFilter();
 }
 function doFilter(){
@@ -1106,10 +1110,23 @@ function applyCrop(){
   var cb=s.onDone; closeCrop(); cb&&cb(data);
 }
 function inkBg(d,w,h){
-  var pts=[[2,2],[w-3,2],[2,h-3],[w-3,h-3],[Math.floor(w/2),2],[2,Math.floor(h/2)],[w-3,Math.floor(h/2)],[Math.floor(w/2),h-3]];
-  var sr=0,sg=0,sb=0,n=0;
-  for(var i=0;i<pts.length;i++){var x=Math.max(0,Math.min(w-1,pts[i][0])),y=Math.max(0,Math.min(h-1,pts[i][1]));var ix=(y*w+x)*4;sr+=d[ix];sg+=d[ix+1];sb+=d[ix+2];n++}
-  return [Math.round(sr/n),Math.round(sg/n),Math.round(sb/n)];
+  var chR=[],chG=[],chB=[];
+  var pts=[[1,1],[w-2,1],[1,h-2],[w-2,h-2]];
+  for(var p=0;p<pts.length;p++){
+    var x0=Math.max(1,Math.min(w-3,pts[p][0]-1)),y0=Math.max(1,Math.min(h-3,pts[p][1]-1));
+    for(var dy=0;dy<3;dy++)for(var dx=0;dx<3;dx++){var ix=((y0+dy)*w+(x0+dx))*4;chR.push(d[ix]);chG.push(d[ix+1]);chB.push(d[ix+2])}
+  }
+  chR.sort(function(a,b){return a-b});chG.sort(function(a,b){return a-b});chB.sort(function(a,b){return a-b});
+  var m=Math.floor(chR.length/2);
+  return [chR[m],chG[m],chB[m]];
+}
+function rgb2hsv(r,g,b){
+  r/=255;g/=255;b/=255;
+  var mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn,h=0;
+  if(d>0){if(mx===r)h=60*(((g-b)/d)%6);else if(mx===g)h=60*((b-r)/d+2);else h=60*((r-g)/d+4)}
+  if(h<0)h+=360;
+  var s=mx===0?0:d/mx;
+  return [h,s,mx];
 }
 function cleanInk(src,mode){
   return new Promise(function(res){
@@ -1117,18 +1134,44 @@ function cleanInk(src,mode){
     var img=new Image();
     img.onload=function(){
       try{
-        var max=1800,w=img.width,h=img.height;
+        var max=1400,w=img.width,h=img.height;
         if(w>max||h>max){var r=Math.min(max/w,max/h);w=Math.round(w*r);h=Math.round(h*r)}
         var c=document.createElement("canvas");c.width=w;c.height=h;
         var ctx=c.getContext("2d");ctx.drawImage(img,0,0,w,h);
         var d=ctx.getImageData(0,0,w,h),px=d.data;
         var bg=inkBg(px,w,h),br=bg[0],bgg=bg[1],bb=bg[2];
-        for(var i=0;i<px.length;i+=4){
-          var r=px[i],g=px[i+1],b=px[i+2];
-          var isRed=(r>g+35&&r>b+35&&r>110);
-          var isBlue=(b>r+30&&b>g+20&&b>110);
-          var isLight=(r>175&&g>175&&b>175);
-          if((mode==="red"&&isRed)||(mode==="blue"&&isBlue)||(mode==="pencil"&&isLight)||(mode==="auto"&&(isRed||isBlue||isLight))){px[i]=br;px[i+1]=bgg;px[i+2]=bb}
+        var bgLum=0.299*br+0.587*bgg+0.114*bb;
+        var n=w*h,mask=new Uint8Array(n);
+        for(var i=0;i<n;i++){
+          var o=i*4,r=px[o],g=px[o+1],b=px[o+2];
+          var hsv=rgb2hsv(r,g,b),hh=hsv[0],ss=hsv[1],vv=hsv[2];
+          var isRed=(hh<16||hh>344)&&ss>0.55&&vv>0.45;
+          var isBlue=hh>=190&&hh<=262&&ss>0.50&&vv>0.40;
+          var lum=0.299*r+0.587*g+0.114*b;
+          var isLight=ss<0.22&&lum>bgLum*0.55&&lum<bgLum*0.80;
+          if((mode==="red"&&isRed)||(mode==="blue"&&isBlue)||(mode==="pencil"&&isLight)||(mode==="auto"&&(isRed||isBlue)))mask[i]=1;
+        }
+        var thin=new Uint8Array(n);
+        for(var i=0;i<n;i++){
+          if(!mask[i])continue;
+          var y=(i/w)|0,x=i-y*w,cnt=0;
+          for(var dy=-1;dy<=1;dy++){var yy=y+dy;if(yy<0||yy>=h)continue;
+            for(var dx=-1;dx<=1;dx++){var xx=x+dx;if(xx<0||xx>=w)continue;if(mask[yy*w+xx])cnt++}
+          }
+          if(cnt<=7)thin[i]=1;
+        }
+        var fin=new Uint8Array(n);
+        for(var i=0;i<n;i++){
+          if(!thin[i])continue;
+          fin[i]=1;
+          var y=(i/w)|0,x=i-y*w;
+          for(var dy=-1;dy<=1;dy++){var yy=y+dy;if(yy<0||yy>=h)continue;
+            for(var dx=-1;dx<=1;dx++){var xx=x+dx;if(xx<0||xx>=w)continue;fin[yy*w+xx]=1}
+          }
+        }
+        for(var i=0;i<n;i++){
+          if(!fin[i])continue;
+          var o=i*4;px[o]=br;px[o+1]=bgg;px[o+2]=bb;
         }
         ctx.putImageData(d,0,0);
         res(c.toDataURL("image/jpeg",0.9));
@@ -1220,7 +1263,7 @@ function rexam(){
   var qsel=document.getElementById("cb-exam-qtype"); if(qsel.options.length<=1){var seen={},arr=[];for(var m in QTYPES){for(var j=0;j<QTYPES[m].length;j++){if(!seen[QTYPES[m][j]]){seen[QTYPES[m][j]]=1;arr.push(QTYPES[m][j])}}}for(var j=0;j<arr.length;j++) qsel.innerHTML+='<option value="'+arr[j]+'">'+arr[j]+'</option>'}
   document.getElementById("cb-exam-online").style.display="none"; document.getElementById("cb-exam-print").style.display="none";
   document.getElementById("cb-exam-config").style.display=""; if(examTimer){clearInterval(examTimer);examTimer=null}
-  (function(){var cfg=document.getElementById("cb-exam-config"); if(cfg&&!document.getElementById("cb-exam-imgclean")){var div=document.createElement("div");div.className="cb-form-row";div.style.marginBottom="6px";div.innerHTML='<div class="cb-form-col"><label>图片处理</label><select id="cb-exam-imgclean"><option value="keep" selected>保留原图</option><option value="auto">自动去手写（红/蓝/浅色）</option><option value="red">只去红笔</option><option value="blue">只去蓝笔</option><option value="pencil">只去浅色铅笔</option></select></div><div class="cb-form-col"><p style="font-size:0.68rem;color:var(--text2);margin:8px 0 0">仅本次组卷生效，不改题库原图；彩色图表题建议保留原图</p></div>';var btn=cfg.querySelector('div[style*="display:flex;gap:8px;margin-top:10px"]');if(btn)cfg.insertBefore(div,btn);else cfg.appendChild(div)}})();
+  (function(){var cfg=document.getElementById("cb-exam-config"); if(cfg&&!document.getElementById("cb-exam-imgclean")){var div=document.createElement("div");div.className="cb-form-row";div.style.marginBottom="6px";div.innerHTML='<div class="cb-form-col"><label>图片处理</label><select id="cb-exam-imgclean"><option value="keep" selected>保留原图</option><option value="auto">自动去手写（红笔/蓝笔）</option><option value="red">只去红笔</option><option value="blue">只去蓝笔</option><option value="pencil">只去铅笔（浅灰）</option></select></div><div class="cb-form-col"><p style="font-size:0.68rem;color:var(--text2);margin:8px 0 0">仅本次组卷生效，不改题库原图；彩色图表题建议保留原图</p></div>';var btn=cfg.querySelector('div[style*="display:flex;gap:8px;margin-top:10px"]');if(btn)cfg.insertBefore(div,btn);else cfg.appendChild(div)}})();
 }
 function startExam(){
   var mod=document.getElementById("cb-exam-mod").value;
