@@ -1,6 +1,6 @@
 {
-  "versionCode": 19,
-  "versionName": "1.9.2",
-  "apkUrl": "https://raw.githubusercontent.com/2020-GIF/cuotiben-releases/main/cuotiben-v21.apk",
-  "note": "更新下载改用稳定直链并增加自动重试；新增意见反馈通道"
+  "versionCode": 20,
+  "versionName": "1.9.3",
+  "apkUrl": "https://raw.githubusercontent.com/2020-GIF/cuotiben-releases/main/cuotiben-v22.apk",
+  "note": "应用更名“公考错题本”；意见反馈默认发送到 2840542949@qq.com"
 }
