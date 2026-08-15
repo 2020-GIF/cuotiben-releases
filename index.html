@@ -329,7 +329,7 @@ function srsCalc(q,rating){
 
 // ===== STATE =====
 var cv="dashboard", rq=[], ri=0, rs=[0,0,0,0,0], cr=-1;
-var aiR=[], photoUrl="", aiPhoto="";
+var aiR=[], photoUrl="", aiPhoto="", photoOrig="";
 var AF_TYPES=["单选","多选","判断","不定项","案例分析","公文写作","大作文","其他"];
 var QTYPES={
   "常识判断":["政治常识","法律常识","经济常识","人文历史","科技生活","地理国情","管理公文","其他常识"],
@@ -342,7 +342,7 @@ var QTYPES={
 };
 var examQs=[], examAns={}, examTimer=null, examSec=0;
 var kwFilter="";
-var APP_VERSION_CODE=21; var APP_VERSION_NAME="1.10.0";
+var APP_VERSION_CODE=22; var APP_VERSION_NAME="1.10.1";
 
 // ===== VIEW SWITCH =====
 function sv(v){
@@ -733,17 +733,38 @@ function exportHTML(){
 function resetPhotoUI(){
   document.getElementById("cb-photo-up").style.display=""; document.getElementById("cb-photo-pv").style.display="none";
   document.getElementById("cb-btn-analyze").style.display="none"; document.getElementById("cb-ai-results").style.display="none";
-  document.getElementById("cb-ai-loading").style.display="none"; aiR=[]; photoUrl=""; aiPhoto=""; document.getElementById("cb-photo-inp").value="";
+  var act=document.getElementById("cb-photo-actions"); if(act) act.style.display="none";
+  var un=document.getElementById("cb-photo-undo"); if(un) un.style.display="none";
+  document.getElementById("cb-ai-loading").style.display="none"; aiR=[]; photoUrl=""; aiPhoto=""; photoOrig=""; document.getElementById("cb-photo-inp").value="";
 }
 function handlePhoto(e){
   var f=e.target.files[0]; if(!f) return;
   var fr=new FileReader(); fr.onload=function(ev){
-    photoUrl=ev.target.result; document.getElementById("cb-photo-img").src=photoUrl;
+    photoOrig=ev.target.result; photoUrl=photoOrig; document.getElementById("cb-photo-img").src=photoUrl;
     document.getElementById("cb-photo-up").style.display="none"; document.getElementById("cb-photo-pv").style.display="";
     document.getElementById("cb-btn-analyze").style.display=""; document.getElementById("cb-ai-results").style.display="none";
+    var act=document.getElementById("cb-photo-actions"); if(act) act.style.display="flex";
+    var un=document.getElementById("cb-photo-undo"); if(un) un.style.display="none";
   };
   fr.onerror=function(){toast("图片读取失败，请重试或改用相册")};
   fr.readAsDataURL(f);
+}
+function cropPhoto(){
+  if(!photoUrl) return;
+  var src=photoOrig||photoUrl;
+  openCropImage(src,function(data){
+    photoUrl=data; aiPhoto=data;
+    var im=document.getElementById("cb-photo-img"); if(im) im.src=data;
+    var un=document.getElementById("cb-photo-undo"); if(un) un.style.display="";
+    toast("已裁剪，点“开始识别”即可识别框选区域");
+  });
+}
+function undoPhoto(){
+  if(!photoOrig) return;
+  photoUrl=photoOrig; aiPhoto="";
+  var im=document.getElementById("cb-photo-img"); if(im) im.src=photoOrig;
+  var un=document.getElementById("cb-photo-undo"); if(un) un.style.display="none";
+  toast("已恢复原图");
 }
 function normMod(raw){
   var s=String(raw||"").trim();
@@ -1666,7 +1687,10 @@ function bindEvents(){
   el=document.getElementById("cb-checkin-trend-mod"); if(el) el.addEventListener("change",renderCheckin);
   // OCR
   el=document.getElementById("cb-photo-camera"); if(el) el.addEventListener("click",function(){var fi=document.getElementById("cb-photo-inp");fi.setAttribute("capture","environment");fi.click()}); el=document.getElementById("cb-photo-gallery"); if(el) el.addEventListener("click",function(){var fi=document.getElementById("cb-photo-inp");fi.removeAttribute("capture");fi.click()});
+  (function(){var pv=document.getElementById("cb-photo-pv"); if(pv&&!document.getElementById("cb-photo-actions")){pv.insertAdjacentHTML("afterend",'<div id="cb-photo-actions" style="display:none;gap:8px;margin-bottom:10px"><button class="cb-btn ghost" id="cb-photo-crop" style="flex:1;font-size:0.82rem">✂️ 裁剪照片</button><button class="cb-btn ghost" id="cb-photo-undo" style="flex:1;font-size:0.82rem;display:none">↩️ 恢复原图</button></div>')}})();
   el=document.getElementById("cb-photo-inp"); if(el) el.addEventListener("change",handlePhoto);
+  el=document.getElementById("cb-photo-crop"); if(el) el.addEventListener("click",cropPhoto);
+  el=document.getElementById("cb-photo-undo"); if(el) el.addEventListener("click",undoPhoto);
   el=document.getElementById("cb-photo-rm"); if(el) el.addEventListener("click",resetPhotoUI);
   el=document.getElementById("cb-btn-text-rec"); if(el) el.addEventListener("click",textRecognition);
   el=document.getElementById("cb-btn-text-save"); if(el) el.addEventListener("click",saveTextAI);

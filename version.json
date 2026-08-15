@@ -1,6 +1,6 @@
 {
-  "versionCode": 21,
-  "versionName": "1.10.0",
-  "apkUrl": "https://raw.githubusercontent.com/2020-GIF/cuotiben-releases/main/cuotiben-v23.apk",
-  "note": "新增 Supabase 云同步：手机/平板/电脑数据互通；电脑端可用网页版 https://2020-gif.github.io/cuotiben-releases/"
+  "versionCode": 22,
+  "versionName": "1.10.1",
+  "apkUrl": "https://raw.githubusercontent.com/2020-GIF/cuotiben-releases/main/cuotiben-v24.apk",
+  "note": "拍照后可先裁剪照片再识别（支持恢复原图）；Supabase 云同步；电脑端网页版 https://2020-gif.github.io/cuotiben-releases/"
 }
