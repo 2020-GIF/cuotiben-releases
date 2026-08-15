@@ -1,6 +1,6 @@
 {
-  "versionCode": 17,
-  "versionName": "1.9",
-  "apkUrl": "https://github.com/2020-GIF/cuotiben-releases/releases/download/v1.9/cuotiben-v19.apk",
-  "note": "新增文字批量识别（自定义接口）、组卷题型筛选与选项打乱、交卷逐题回顾、打印含解析版、每日目标打卡与模块趋势"
+  "versionCode": 18,
+  "versionName": "1.9.1",
+  "apkUrl": "https://github.com/2020-GIF/cuotiben-releases/releases/download/v1.9.1/cuotiben-v20.apk",
+  "note": "新增意见反馈通道：可发邮件或提交到 GitHub Issues"
 }
