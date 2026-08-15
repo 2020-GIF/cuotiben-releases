@@ -1,6 +1,6 @@
 {
-  "versionCode": 20,
-  "versionName": "1.9.3",
-  "apkUrl": "https://raw.githubusercontent.com/2020-GIF/cuotiben-releases/main/cuotiben-v22.apk",
-  "note": "应用更名“公考错题本”；意见反馈默认发送到 2840542949@qq.com"
+  "versionCode": 21,
+  "versionName": "1.10.0",
+  "apkUrl": "https://raw.githubusercontent.com/2020-GIF/cuotiben-releases/main/cuotiben-v23.apk",
+  "note": "新增 Supabase 云同步：手机/平板/电脑数据互通；电脑端可用网页版 https://2020-gif.github.io/cuotiben-releases/"
 }
