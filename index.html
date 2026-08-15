@@ -342,7 +342,7 @@ var QTYPES={
 };
 var examQs=[], examAns={}, examTimer=null, examSec=0;
 var kwFilter="";
-var APP_VERSION_CODE=24; var APP_VERSION_NAME="1.10.3";
+var APP_VERSION_CODE=25; var APP_VERSION_NAME="1.10.4";
 
 // ===== VIEW SWITCH =====
 function sv(v){
@@ -1430,7 +1430,7 @@ function applyAppearance(){
 function checkUpdate(){
   var url=(localStorage.getItem("cb_update_url")||"https://raw.githubusercontent.com/2020-GIF/cuotiben-releases/main/version.json").trim();
   if(!url){toast("请先在设置里填写更新源地址（version.json 链接）");return}
-  fetch(url,{cache:"no-store"}).then(function(r){return r.json()}).then(function(info){
+  fetch(url+(url.indexOf("?")>=0?"&":"?")+"_="+Date.now(),{cache:"no-store"}).then(function(r){return r.json()}).then(function(info){
     if(info&&info.versionCode>APP_VERSION_CODE&&info.apkUrl){
       if(window.Android&&window.Android.downloadApk){
         toast("发现新版本 "+info.versionName+"，开始下载…",2600);

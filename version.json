@@ -1,6 +1,6 @@
 {
-  "versionCode": 24,
-  "versionName": "1.10.3",
-  "apkUrl": "https://raw.githubusercontent.com/2020-GIF/cuotiben-releases/main/cuotiben-v26.apk",
-  "note": "修复题库筛选缺少模块/题型/等级分类；去手写算法升级（更准、保护图表色块）"
+  "versionCode": 25,
+  "versionName": "1.10.4",
+  "apkUrl": "https://raw.githubusercontent.com/2020-GIF/cuotiben-releases/main/cuotiben-v27.apk",
+  "note": "检查更新加时间戳防 CDN 缓存，修复发布后短时间查不到新版本"
 }
