@@ -342,7 +342,7 @@ var QTYPES={
 };
 var examQs=[], examAns={}, examTimer=null, examSec=0;
 var kwFilter="";
-var APP_VERSION_CODE=22; var APP_VERSION_NAME="1.10.1";
+var APP_VERSION_CODE=23; var APP_VERSION_NAME="1.10.2";
 
 // ===== VIEW SWITCH =====
 function sv(v){
@@ -1105,6 +1105,39 @@ function applyCrop(){
   var data=out.toDataURL("image/jpeg",0.88);
   var cb=s.onDone; closeCrop(); cb&&cb(data);
 }
+function inkBg(d,w,h){
+  var pts=[[2,2],[w-3,2],[2,h-3],[w-3,h-3],[Math.floor(w/2),2],[2,Math.floor(h/2)],[w-3,Math.floor(h/2)],[Math.floor(w/2),h-3]];
+  var sr=0,sg=0,sb=0,n=0;
+  for(var i=0;i<pts.length;i++){var x=Math.max(0,Math.min(w-1,pts[i][0])),y=Math.max(0,Math.min(h-1,pts[i][1]));var ix=(y*w+x)*4;sr+=d[ix];sg+=d[ix+1];sb+=d[ix+2];n++}
+  return [Math.round(sr/n),Math.round(sg/n),Math.round(sb/n)];
+}
+function cleanInk(src,mode){
+  return new Promise(function(res){
+    if(!src||!mode||mode==="keep"){res(src);return}
+    var img=new Image();
+    img.onload=function(){
+      try{
+        var max=1800,w=img.width,h=img.height;
+        if(w>max||h>max){var r=Math.min(max/w,max/h);w=Math.round(w*r);h=Math.round(h*r)}
+        var c=document.createElement("canvas");c.width=w;c.height=h;
+        var ctx=c.getContext("2d");ctx.drawImage(img,0,0,w,h);
+        var d=ctx.getImageData(0,0,w,h),px=d.data;
+        var bg=inkBg(px,w,h),br=bg[0],bgg=bg[1],bb=bg[2];
+        for(var i=0;i<px.length;i+=4){
+          var r=px[i],g=px[i+1],b=px[i+2];
+          var isRed=(r>g+35&&r>b+35&&r>110);
+          var isBlue=(b>r+30&&b>g+20&&b>110);
+          var isLight=(r>175&&g>175&&b>175);
+          if((mode==="red"&&isRed)||(mode==="blue"&&isBlue)||(mode==="pencil"&&isLight)||(mode==="auto"&&(isRed||isBlue||isLight))){px[i]=br;px[i+1]=bgg;px[i+2]=bb}
+        }
+        ctx.putImageData(d,0,0);
+        res(c.toDataURL("image/jpeg",0.9));
+      }catch(e){res(src)}
+    };
+    img.onerror=function(){res(src)};
+    img.src=src;
+  });
+}
 function saveAI(){
   if(!aiR.length) return; var now=new Date(), n=0;
   for(var i=0;i<aiR.length;i++){ var r=aiR[i],m=MODS.indexOf(r.module)>=0?r.module:MODS[0];
@@ -1187,6 +1220,7 @@ function rexam(){
   var qsel=document.getElementById("cb-exam-qtype"); if(qsel.options.length<=1){var seen={},arr=[];for(var m in QTYPES){for(var j=0;j<QTYPES[m].length;j++){if(!seen[QTYPES[m][j]]){seen[QTYPES[m][j]]=1;arr.push(QTYPES[m][j])}}}for(var j=0;j<arr.length;j++) qsel.innerHTML+='<option value="'+arr[j]+'">'+arr[j]+'</option>'}
   document.getElementById("cb-exam-online").style.display="none"; document.getElementById("cb-exam-print").style.display="none";
   document.getElementById("cb-exam-config").style.display=""; if(examTimer){clearInterval(examTimer);examTimer=null}
+  (function(){var cfg=document.getElementById("cb-exam-config"); if(cfg&&!document.getElementById("cb-exam-imgclean")){var div=document.createElement("div");div.className="cb-form-row";div.style.marginBottom="6px";div.innerHTML='<div class="cb-form-col"><label>图片处理</label><select id="cb-exam-imgclean"><option value="keep" selected>保留原图</option><option value="auto">自动去手写（红/蓝/浅色）</option><option value="red">只去红笔</option><option value="blue">只去蓝笔</option><option value="pencil">只去浅色铅笔</option></select></div><div class="cb-form-col"><p style="font-size:0.68rem;color:var(--text2);margin:8px 0 0">仅本次组卷生效，不改题库原图；彩色图表题建议保留原图</p></div>';var btn=cfg.querySelector('div[style*="display:flex;gap:8px;margin-top:10px"]');if(btn)cfg.insertBefore(div,btn);else cfg.appendChild(div)}})();
 }
 function startExam(){
   var mod=document.getElementById("cb-exam-mod").value;
@@ -1195,18 +1229,21 @@ function startExam(){
   var qt=document.getElementById("cb-exam-qtype").value;
   var shuffle=document.getElementById("cb-exam-shuffle")?document.getElementById("cb-exam-shuffle").checked:true;
   var count=parseInt(document.getElementById("cb-exam-count").value)||30;
-  dbAll(function(e,all){ if(e){toast("加载失败");return}
+  dbAll(async function(e,all){ if(e){toast("加载失败");return}
     var ow=document.getElementById("cb-exam-onlywrong")?document.getElementById("cb-exam-onlywrong").checked:false;
     var pool=all.filter(function(q){if(mod&&q.mod!==mod)return false;if(diff&&q.diff!==diff)return false;if(src&&q.src!==src)return false;if(qt&&q.qtype!==qt)return false;if(ow&&(q.lv||0)>=7)return false;return true});
     if(pool.length===0){toast("没有符合条件的题目");return}
     for(var i=pool.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=pool[i];pool[i]=pool[j];pool[j]=t}
     examQs=pool.slice(0,Math.min(count,pool.length)); examAns={}; examOpts={}; examSec=0;
+    var cleanMode=document.getElementById("cb-exam-imgclean")?document.getElementById("cb-exam-imgclean").value:"keep";
+    var cleanImgs={};
+    if(cleanMode!=="keep"){toast("正在处理图片笔迹…"); for(var ci=0;ci<examQs.length;ci++){var cq=examQs[ci]; if(cq.img){cleanImgs[cq.id]=await cleanInk(cq.img,cleanMode)}}}
     document.getElementById("cb-exam-config").style.display="none"; document.getElementById("cb-exam-online").style.display="";
     var h=''; for(var i=0;i<examQs.length;i++){var q=examQs[i];
       var parsed=splitOptions(q.q), ans=(q.a||"").replace(/\s/g,"").toUpperCase();
       var useOpts=shuffle&&parsed&&parsed.opts.length>=2&&/^[A-E]$/.test(ans);
       h+='<div class="cb-exam-q"><div class="cb-exam-q-head"><span class="cb-mod '+modCls(q.mod||"")+'">'+(i+1)+'. '+q.mod+'</span><span style="font-size:0.7rem;color:var(--text2)">'+["","⭐","⭐⭐","⭐⭐⭐"][q.diff||1]+'</span></div>';
-      h+='<div class="cb-exam-q-text">'+(q.img?'<img src="'+q.img+'" style="max-width:100%;max-height:220px;object-fit:contain;border:1px solid var(--border);border-radius:8px;margin-bottom:6px">':'')+(useOpts?parsed.stem:(q.q||"")).replace(/</g,"&lt;").replace(/>/g,"&gt;")+'</div>';
+      h+='<div class="cb-exam-q-text">'+(q.img?'<img src="'+(cleanImgs[q.id]||q.img)+'" style="max-width:100%;max-height:220px;object-fit:contain;border:1px solid var(--border);border-radius:8px;margin-bottom:6px">':'')+(useOpts?parsed.stem:(q.q||"")).replace(/</g,"&lt;").replace(/>/g,"&gt;")+'</div>';
       if(useOpts){
         var opts=parsed.opts.slice();
         for(var k=opts.length-1;k>0;k--){var z=Math.floor(Math.random()*(k+1));var t=opts[k];opts[k]=opts[z];opts[z]=t}
@@ -1257,26 +1294,28 @@ function showExamResult(correct,total,details){
   var td=dk(new Date()); dbMeta("lastReview",function(e,v){dbMeta("streak",function(e2,st){var ns=(st||0)+(v===dk(ad(new Date(),-1))?1:1);dbSetMeta("streak",ns);dbSetMeta("lastReview",td)})});
   toast("交卷完成！正确率 "+pct+"%");
 }
-function printExam(){
+async function printExam(){
   var mod=document.getElementById("cb-exam-mod").value;
   var diff=parseInt(document.getElementById("cb-exam-diff").value)||0;
   var src=document.getElementById("cb-exam-src").value;
   var qt=document.getElementById("cb-exam-qtype").value;
   var pmode=document.getElementById("cb-exam-printmode").value;
+  var cleanMode=document.getElementById("cb-exam-imgclean")?document.getElementById("cb-exam-imgclean").value:"keep";
   var count=parseInt(document.getElementById("cb-exam-count").value)||30;
-  dbAll(function(e,all){ if(e){toast("加载失败");return}
-    var ow=document.getElementById("cb-exam-onlywrong")?document.getElementById("cb-exam-onlywrong").checked:false;
-    var pool=all.filter(function(q){if(mod&&q.mod!==mod)return false;if(diff&&q.diff!==diff)return false;if(src&&q.src!==src)return false;if(qt&&q.qtype!==qt)return false;if(ow&&(q.lv||0)>=7)return false;return true});
-    if(pool.length===0){toast("没有符合条件的题目");return}
-    for(var i=pool.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=pool[i];pool[i]=pool[j];pool[j]=t}
-    pool=pool.slice(0,Math.min(count,pool.length));
-    var h='<div class="cb-print-hd"><h1>公考错题模拟试卷</h1><div class="cb-print-info"><span>题目数：'+pool.length+'</span><span>日期：'+dk(new Date())+'</span></div></div><div class="cb-print-seal">--- 密 封 线 内 不 要 答 题 ---</div>';
-    for(var i=0;i<pool.length;i++){var q=pool[i];
-      h+='<div class="cb-print-q"><div class="cb-print-q-num">'+(i+1)+'. <span class="cb-mod '+modCls(q.mod||"")+'">'+q.mod+'</span></div>'+(q.img?'<img src="'+q.img+'" style="max-width:100%;max-height:240px;object-fit:contain;border:1px solid #ddd;border-radius:6px;margin:4px 0">':'')+'<div class="cb-print-q-text">'+(q.q||"").replace(/</g,"&lt;").replace(/>/g,"&gt;")+'</div>'+(pmode==="a"?'<div style="font-size:0.8rem;margin-top:4px;padding:6px;border:1px dashed #999;border-radius:4px"><b>答案：</b>'+String(q.a||"无").replace(/</g,"&lt;")+'<br><b>解析：</b>'+String(q.notes||"无").replace(/</g,"&lt;")+'<br><b>错因：</b>'+(q.cause||"无")+'</div>':'')+'<div class="cb-print-ans">作答：</div></div>';
-    }
-    document.getElementById("cb-print-content").innerHTML=h; document.getElementById("cb-exam-config").style.display="none";
-    document.getElementById("cb-exam-print").style.display="";
-  });
+  var all=await new Promise(function(res,rej){dbAll(function(e,a){e?rej(e):res(a||[])})});
+  var ow=document.getElementById("cb-exam-onlywrong")?document.getElementById("cb-exam-onlywrong").checked:false;
+  var pool=all.filter(function(q){if(mod&&q.mod!==mod)return false;if(diff&&q.diff!==diff)return false;if(src&&q.src!==src)return false;if(qt&&q.qtype!==qt)return false;if(ow&&(q.lv||0)>=7)return false;return true});
+  if(pool.length===0){toast("没有符合条件的题目");return}
+  for(var i=pool.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=pool[i];pool[i]=pool[j];pool[j]=t}
+  pool=pool.slice(0,Math.min(count,pool.length));
+  var cleanImgs={};
+  if(cleanMode!=="keep"){toast("正在处理图片笔迹…"); for(var ci=0;ci<pool.length;ci++){var cq=pool[ci]; if(cq.img){cleanImgs[cq.id]=await cleanInk(cq.img,cleanMode)}}}
+  var h='<div class="cb-print-hd"><h1>公考错题模拟试卷</h1><div class="cb-print-info"><span>题目数：'+pool.length+'</span><span>日期：'+dk(new Date())+'</span></div></div><div class="cb-print-seal">--- 密 封 线 内 不 要 答 题 ---</div>';
+  for(var i=0;i<pool.length;i++){var q=pool[i];
+    h+='<div class="cb-print-q"><div class="cb-print-q-num">'+(i+1)+'. <span class="cb-mod '+modCls(q.mod||"")+'">'+q.mod+'</span></div>'+(q.img?'<img src="'+(cleanImgs[q.id]||q.img)+'" style="max-width:100%;max-height:240px;object-fit:contain;border:1px solid #ddd;border-radius:6px;margin:4px 0">':'')+'<div class="cb-print-q-text">'+(q.q||"").replace(/</g,"&lt;").replace(/>/g,"&gt;")+'</div>'+(pmode==="a"?'<div style="font-size:0.8rem;margin-top:4px;padding:6px;border:1px dashed #999;border-radius:4px"><b>答案：</b>'+String(q.a||"无").replace(/</g,"&lt;")+'<br><b>解析：</b>'+String(q.notes||"无").replace(/</g,"&lt;")+'<br><b>错因：</b>'+(q.cause||"无")+'</div>':'')+'<div class="cb-print-ans">作答：</div></div>';
+  }
+  document.getElementById("cb-print-content").innerHTML=h; document.getElementById("cb-exam-config").style.display="none";
+  document.getElementById("cb-exam-print").style.display="";
 }
 var PRINT_CSS='body{font-family:"SimSun","PingFang SC",serif;color:#000;background:#fff} .cb-print-paper{max-width:210mm;margin:0 auto} .cb-print-hd{text-align:center;border-bottom:2px solid #000;padding-bottom:10px;margin-bottom:14px} .cb-print-hd h1{font-size:1.3rem;letter-spacing:4px;margin:0} .cb-print-info{display:flex;justify-content:space-between;font-size:0.8rem;color:#555;margin-top:4px} .cb-print-seal{text-align:center;border:2px dashed #999;padding:6px;margin:12px 0;color:#999;font-size:0.8rem;letter-spacing:4px} .cb-print-q{page-break-inside:avoid;margin:12px 0;padding:8px 0;border-bottom:1px dotted #ccc} .cb-print-q-num{font-weight:700;margin-bottom:4px} .cb-print-q-text{line-height:1.8;font-size:0.88rem} .cb-print-ans{min-height:70px;border:1px solid #ddd;border-radius:4px;padding:6px;color:#aaa;font-size:0.8rem;margin-top:4px} @page{margin:15mm}';
 function doNativePrint(){
