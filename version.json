@@ -1,6 +1,6 @@
 {
-  "versionCode": 18,
-  "versionName": "1.9.1",
-  "apkUrl": "https://github.com/2020-GIF/cuotiben-releases/releases/download/v1.9.1/cuotiben-v20.apk",
-  "note": "新增意见反馈通道：可发邮件或提交到 GitHub Issues"
+  "versionCode": 19,
+  "versionName": "1.9.2",
+  "apkUrl": "https://raw.githubusercontent.com/2020-GIF/cuotiben-releases/main/cuotiben-v21.apk",
+  "note": "更新下载改用稳定直链并增加自动重试；新增意见反馈通道"
 }
